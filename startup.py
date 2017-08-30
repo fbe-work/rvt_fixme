@@ -13,6 +13,8 @@ import datetime
 startup_path = op.dirname(__file__)
 sys.path.append(startup_path)
 
+# TODO add support for reading bcf/bcfzip guids, comments
+
 
 def event_handler_function(sender, args):
     print(15*"-" + "event_handler file opened" + 15*"-")
