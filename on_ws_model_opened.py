@@ -43,15 +43,25 @@ def get_tasks(user_name, fixme_task_list):
             for date in warn_id_dict[topic]:
                 for str_id in warn_id_dict[topic][date]:
                     elem_id = ElementId(int(str_id))
-                    print(str_id)
-                    this_script.output.print_md("--- " + this_script.output.linkify(elem_id))
+                    elem = doc.GetElement(elem_id)
+                    elem_cat = elem.Category.Name.strip("<>")
+                    if elem.ViewSpecific:
+                        location = doc.GetElement(elem.OwnerViewId).Name
+                    else:
+                        location = doc.GetElement(elem.LevelId).Name
+
+                    elem_info = " - {} - {}".format(elem_cat, location)
+
+                    last_changer = WorksharingUtils.GetWorksharingTooltipInfo(doc, elem_id).LastChangedBy
+                    if last_changer == user_name:
+                        this_script.output.print_md("--- " + this_script.output.linkify(elem_id) + elem_info)
                     presented_ids += 1
-                    if presented_ids == 5:
-                        break
+            if presented_ids == 9:
+                break
 
     print("-" * 59)
     print("| thank you, that is all I have for now,")
-    print("| have a great day!")
+    this_script.output.print_md("| **have a great day!**")
     print("-" * 59)
 
 
