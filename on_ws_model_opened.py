@@ -4,14 +4,35 @@ things todo on workshared model
 """
 import os.path as op
 import json
+import ctypes
 from ConfigParser import ConfigParser
 from scriptutils import this_script
 from Autodesk.Revit.DB import BuiltInCategory, ElementId, WorksharingUtils
 
 
+def disk_space_left(drive):
+    # checking available drive space
+    free_bytes = ctypes.c_ulonglong(0)
+    ctypes.windll.kernel32.GetDiskFreeSpaceExW(ctypes.c_wchar_p(drive),
+                                               None,
+                                               None,
+                                               ctypes.pointer(free_bytes))
+
+    free_hd_space = float(free_bytes.value) / (1024 ** 3)
+    if free_hd_space < 10.0:
+        this_script.output.print_md("<font color='red'>**Remaining space on {} "
+                                    "is less than 10GB!!**</font>".format(drive))
+        this_script.output.print_md("<font color='red'>**Clean up drive first "
+                                    "before you risk broken syncs!!**</font>")
+    else:
+        print("- free disk space on {} is: {} GB".format(drive, free_hd_space))
+
+
 def get_tasks(user_name, fixme_task_list):
     doc = __revit__.ActiveUIDocument.Document
     uidoc = __revit__.ActiveUIDocument
+    jrn_drive = op.abspath(op.splitdrive(doc.Application.RecordingJournalFilename)[0])
+    disk_space_left(jrn_drive)
 
     if fixme_task_list.endswith("ini"):
         ini_file = fixme_task_list
@@ -55,6 +76,7 @@ def get_tasks(user_name, fixme_task_list):
                     last_changer = WorksharingUtils.GetWorksharingTooltipInfo(doc, elem_id).LastChangedBy
                     if last_changer == user_name:
                         this_script.output.print_md("--- " + this_script.output.linkify(elem_id) + elem_info)
+                        this_script.output.print_md("--- " + elem.Category.Name)
                     presented_ids += 1
             if presented_ids == 9:
                 break
