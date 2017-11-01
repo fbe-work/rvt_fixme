@@ -7,7 +7,10 @@ and reminds you of errors/warnings to fix
 import System
 from System import EventHandler
 from Autodesk.Revit.DB.Events import DocumentOpenedEventArgs
+from Autodesk.Revit.DB.Events import DocumentOpeningEventArgs
+from Autodesk.Revit.DB.Events import ProgressChangedEventArgs
 from Autodesk.Revit.DB import ModelPathUtils
+from Autodesk.Revit.UI import TaskDialog, TaskDialogIcon
 import sys
 import os.path as op
 import datetime
@@ -27,6 +30,16 @@ def event_handler_function(sender, args):
         doc_central_path = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath())
         doc_local_path = doc.PathName
         doc_path = doc_central_path
+        in_central = doc_central_path == doc_local_path
+        if in_central:
+            task_dialog = TaskDialog("rvt_fixme_central_model_warning")
+            task_dialog.Id = "rvt_fixme_central_model_warning"
+            task_dialog.MainIcon = TaskDialogIcon.TaskDialogIconWarning
+            task_dialog.Title = "Attention - you are in central model!!!"
+            task_dialog.MainContent = task_dialog.Title
+            task_dialog.TitleAutoPrefix = True
+            task_dialog.AllowCancellation = True
+            task_dialog.Show()
         model_name = op.basename(doc_path)
         model_path = op.dirname(doc_path)
         # model_central_name = model_name.split("_" + rvt_user)[0]
@@ -61,8 +74,39 @@ def event_handler_function(sender, args):
             model_log.write("ws file was opened at \n- {0}\n-".format(now_utc))
 
 
+def open_notify(sender, args):
+    print("--opening a project!!")
 
+
+def progress_notify(sender, args):
+    global refs_updated
+    topic = args.Caption
+    stage = args.Stage.ToString()
+    # print(sender, args, topic)
+    if topic == "Updating References":
+
+        if stage == "Started":
+            print("--------!!started_updating_refs!!")
+            if refs_updated > 1:
+                print("ref loading! cancellable?: ------------- {}".format(args.Cancellable))
+
+                if args.Cancellable:
+                    # args.Cancel()
+                    # print("cancelled!")
+                    pass
+
+            refs_updated += 1
+
+        elif stage == "Finished":
+            print("--------!!finished_updating_refs!! current ref_count: {}".format(refs_updated))
+
+        print(args.Caption, stage, args.Position)
+
+
+refs_updated = 0
 __revit__.Application.DocumentOpened += EventHandler[DocumentOpenedEventArgs](event_handler_function)
+__revit__.Application.DocumentOpening += EventHandler[DocumentOpeningEventArgs](open_notify)
+# __revit__.Application.ProgressChanged += EventHandler[ProgressChangedEventArgs](progress_notify)
 rvt_user = __revit__.Application.Username
 
 doc = None
@@ -70,5 +114,8 @@ uidoc = None
 
 print("-"*59)
 print(" | dear {0} welcome to RVT_fixme!!".format(rvt_user))
+print(" | I will try to inform you on:".format(rvt_user))
+print(" | disk space left, central model opened".format(rvt_user))
+print(" | and things to fix in project model".format(rvt_user))
 # print(" | rvt_fix at {0}".format(__file__))
 print("-"*59)
